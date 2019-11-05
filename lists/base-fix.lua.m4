@@ -30,3 +30,10 @@ if not version_match or not installed or
 	Install("fix-updater-v65.0-alternatives-update")
 	Package("fix-updater-v65.0-alternatives-update", { replan = "finished" })
 end
+
+-- Migrate orignal pkglists to separate config with options in place
+if not version_match or not installed or
+		(installed["pkglists"] and version_match(installed["pkglists"].version, "<1.3")) then
+	Install("fix-pkglists-options")
+	Package("fix-pkglists-options", { replan = "immediate" })
+end
