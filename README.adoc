@@ -1,5 +1,5 @@
-Turris OS building script
-=========================
+Turris OS building scripts
+==========================
 
 Turris OS is based on OpenWrt. This repository contains script and additional
 patches to convert OpenWrt tree to Turris OS one.
