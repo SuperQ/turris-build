@@ -33,7 +33,7 @@ Install("ntfs-3g", "ntfs-3g-utils", { priority = 40 })
 Install("sshfs", { priority = 40 })
 
 -- Network
-Install("wget", "rsync", "rsyncd", "samba36-client", "samba36-server", { priority = 40 })
+Install("gnu-wget", "rsync", "rsyncd", "samba36-client", "samba36-server", { priority = 40 })
 
 -- Luci
 luci_app("hd-idle","minidlna", "samba")
