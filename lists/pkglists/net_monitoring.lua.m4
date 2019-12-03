@@ -11,7 +11,7 @@ if options and options.dev_detect then
 end
 
 if options and options.pakon then
-	Install("pakon", "pakon-lists", "suricata-pakon", { priority = 40 })
+	Install("pakon", { priority = 40 })
 	foris_plugin("pakon")
 end
 
