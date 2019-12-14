@@ -1,0 +1,24 @@
+From 3ee62cae6b8d2fc74d397e8ef382056b27bef771 Mon Sep 17 00:00:00 2001
+From: Michal Hrusecky <michal.hrusecky@nic.cz>
+Date: Thu, 28 Mar 2019 17:46:18 +0100
+Subject: [PATCH] mozilla-iot-gateway: Add webapp
+
+---
+ lang/node-mozilla-iot-gateway/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lang/node-mozilla-iot-gateway/Makefile b/lang/node-mozilla-iot-gateway/Makefile
+index 5b5e50017..7343a3aa9 100644
+--- a/lang/node-mozilla-iot-gateway/Makefile
++++ b/lang/node-mozilla-iot-gateway/Makefile
+@@ -33,7 +33,7 @@ define Package/node-mozilla-iot-gateway
+   CATEGORY:=Languages
+   TITLE:=Things Gateway by Mozilla
+   URL:=https://iot.mozilla.org/gateway/
+-  DEPENDS:=+node +node-npm +libopenzwave +python +openssl-util
++  DEPENDS:=+node +node-npm +libopenzwave +python +openssl-util +mozilla-iot-gateway-webapp
+ endef
+
+ define Package/node-mozilla-iot-gateway/description
+--
+2.24.1
