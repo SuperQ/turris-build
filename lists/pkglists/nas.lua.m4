@@ -39,7 +39,7 @@ luci_app("hd-idle")
 
 -- Samba --
 if options and options.samba then
-	forInstall(samba4,client,server,admin,utils)
+	forInstall(samba36,client,server)
 	luci_app("samba4")
 end
 
