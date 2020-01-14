@@ -8,7 +8,7 @@ This patch causes boot to not proceed because kernel won't locate FS on
 MMC. MMC it self is correctly detected but it might not be readable by
 kernel with this patch. Instead kernel panics.
 
-Second patch couses timeouts on SD card access.
+Second patch causes timeouts on SD card access.
 ---
  ...-of-esdhc-set-DMA-snooping-based-on-.patch | 32 +++++++++++++++++++
  ...i-of-esdhc-fix-P2020-errata-handling.patch | 28 ++++++++++++++++
