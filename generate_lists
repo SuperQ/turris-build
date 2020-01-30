@@ -20,7 +20,7 @@ src_dir="$(dirname "$(readlink -f "$0")")"
 . "$src_dir/helpers/common.sh"
 . "$src_dir/helpers/generate_common.sh"
 
-output_path=
+output_path="generated_lists"
 sign_key=
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -37,25 +37,32 @@ while [ $# -gt 0 ]; do
 			echo "    Run this script in debug mode"
 			exit
 			;;
+
 		--sign)
 			shift
 			sign_key="$1"
 			;;
+
 		--debug)
 			set -x
 			;;
+
+		# stop command line options parsing
 		*)
-			if [ -z "$output_path" ]; then
-				output_path="$1"
-			else
-				echo "Unknown option: $1"
-				exit 1
-			fi
+			break
 			;;
 	esac
+
 	shift
 done
-[ -n "$output_path" ] || output_path="generated_lists"
+
+if [ $# -eq 1 ]; then
+	output_path="$1"
+elif [ $# -gt 1 ]; then
+	echo "Invalid number of arguments. See '$0 -h'" >&2
+	exit 1
+fi
+
 
 [ -d "$src_dir/lists" -a -f "$src_dir/feeds.conf" ] || \
 	die "This script has to be in the same direstory as feeds.conf and lists directory."
