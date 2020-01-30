@@ -39,8 +39,17 @@ while [ $# -gt 0 ]; do
 			;;
 
 		--sign)
+			[ $# -ge 2 ] || {
+				echo "'--sign' option needs an argument" >&2
+				exit 1
+			}
+			sign_key="$2"
 			shift
-			sign_key="$1"
+
+			[ -f "$sign_key" -a -r "$sign_key"  ] || {
+				echo "Sign key '$sign_key' must be a readable file" >&2
+				exit 1
+			}
 			;;
 
 		--debug)
