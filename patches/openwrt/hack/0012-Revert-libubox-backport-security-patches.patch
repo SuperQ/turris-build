@@ -1,0 +1,1257 @@
+From 5653dc56407d91c3c1d28ca871d2e6f8f4498c34 Mon Sep 17 00:00:00 2001
+From: Josef Schlehofer <pepe.schlehofer@gmail.com>
+Date: Mon, 3 Feb 2020 18:57:18 +0100
+Subject: [PATCH] Revert "libubox: backport security patches"
+
+We are reverting this patch as it seems that it might be causing multiple
+issues for us even it is backporting fixes for security vulnerabilities.
+
+Packages through procd, for example, transmisssion, fosquitto, can not be started. But they works when they are started manually.
+Fosquitto is the requirement for Foris and if Fosquitto is not running,
+Foris throws 500.
+
+This reverts commit cc0a54e3326d6329d85106d93d4083df380dac09.
+---
+ package/libs/libubox/Makefile                 |   2 +-
+ ...-possible-uninitialized-struct-membe.patch |  39 -----
+ ...hn-fix-off-by-one-in-jshn_parse_file.patch |  39 -----
+ ...-attr-parsing-into-separate-function.patch |  97 -----------
+ ...-blob-introduce-blob_parse_untrusted.patch |  78 ---------
+ ...ob-fix-OOB-access-in-blob_check_type.patch |  78 ---------
+ ...eap-buffer-overflow-in-blobmsg_parse.patch |  32 ----
+ ...-length-check-does-not-perform-out-o.patch |  51 ------
+ ...lobmsg_check_attr-by-blobmsg_check_a.patch | 132 ---------------
+ ...-variants-for-all-attribute-checking.patch | 157 ------------------
+ ...x-array-out-of-bounds-GCC-10-warning.patch |  39 -----
+ ...g-payload-len-passed-from-blobmsg_ch.patch |  38 -----
+ .../0012-jshn-prefer-snprintf-usage.patch     |  61 -------
+ ...msg-blobmsg_vprintf-prefer-vsnprintf.patch |  38 -----
+ ...blobmsg_json-fix-int16-serialization.patch |  41 -----
+ ...5-blobmsg_json-prefer-snprintf-usage.patch |  66 --------
+ ...parse-and-blobmsg_parse_array-oob-re.patch | 110 ------------
+ 17 files changed, 1 insertion(+), 1097 deletions(-)
+ delete mode 100644 package/libs/libubox/patches/0001-blobmsg_json-fix-possible-uninitialized-struct-membe.patch
+ delete mode 100644 package/libs/libubox/patches/0002-jshn-fix-off-by-one-in-jshn_parse_file.patch
+ delete mode 100644 package/libs/libubox/patches/0003-blob-refactor-attr-parsing-into-separate-function.patch
+ delete mode 100644 package/libs/libubox/patches/0004-blob-introduce-blob_parse_untrusted.patch
+ delete mode 100644 package/libs/libubox/patches/0005-blob-fix-OOB-access-in-blob_check_type.patch
+ delete mode 100644 package/libs/libubox/patches/0006-blobmsg-fix-heap-buffer-overflow-in-blobmsg_parse.patch
+ delete mode 100644 package/libs/libubox/patches/0007-Ensure-blob_attr-length-check-does-not-perform-out-o.patch
+ delete mode 100644 package/libs/libubox/patches/0008-Replace-use-of-blobmsg_check_attr-by-blobmsg_check_a.patch
+ delete mode 100644 package/libs/libubox/patches/0009-blobmsg-add-_len-variants-for-all-attribute-checking.patch
+ delete mode 100644 package/libs/libubox/patches/0010-blobmsg-fix-array-out-of-bounds-GCC-10-warning.patch
+ delete mode 100644 package/libs/libubox/patches/0011-blobmsg-fix-wrong-payload-len-passed-from-blobmsg_ch.patch
+ delete mode 100644 package/libs/libubox/patches/0012-jshn-prefer-snprintf-usage.patch
+ delete mode 100644 package/libs/libubox/patches/0013-blobmsg-blobmsg_vprintf-prefer-vsnprintf.patch
+ delete mode 100644 package/libs/libubox/patches/0014-blobmsg_json-fix-int16-serialization.patch
+ delete mode 100644 package/libs/libubox/patches/0015-blobmsg_json-prefer-snprintf-usage.patch
+ delete mode 100644 package/libs/libubox/patches/0016-blobmsg-blobmsg_parse-and-blobmsg_parse_array-oob-re.patch
+
+diff --git a/package/libs/libubox/Makefile b/package/libs/libubox/Makefile
+index f5a1f12f22..a0e75f936c 100644
+--- a/package/libs/libubox/Makefile
++++ b/package/libs/libubox/Makefile
+@@ -1,7 +1,7 @@
+ include $(TOPDIR)/rules.mk
+ 
+ PKG_NAME:=libubox
+-PKG_RELEASE=3
++PKG_RELEASE=2
+ 
+ PKG_SOURCE_PROTO:=git
+ PKG_SOURCE_URL=$(PROJECT_GIT)/project/libubox.git
+diff --git a/package/libs/libubox/patches/0001-blobmsg_json-fix-possible-uninitialized-struct-membe.patch b/package/libs/libubox/patches/0001-blobmsg_json-fix-possible-uninitialized-struct-membe.patch
+deleted file mode 100644
+index bb0138f2d4..0000000000
+--- a/package/libs/libubox/patches/0001-blobmsg_json-fix-possible-uninitialized-struct-membe.patch
++++ /dev/null
+@@ -1,39 +0,0 @@
+-From 2acfe84e4c871fb994c38c9f2508eb9ebd296b74 Mon Sep 17 00:00:00 2001
+-From: =?UTF-8?q?Petr=20=C5=A0tetiar?= <ynezz@true.cz>
+-Date: Tue, 19 Nov 2019 17:34:25 +0100
+-Subject: blobmsg_json: fix possible uninitialized struct member
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-clang-10 analyzer reports following:
+-
+- blobmsg_json.c:285:2: warning: The expression is an uninitialized value. The computed value will also be garbage
+-         s->indent_level++;
+-         ^~~~~~~~~~~~~~~~~
+-
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blobmsg_json.c | 4 ++--
+- 1 file changed, 2 insertions(+), 2 deletions(-)
+-
+---- a/blobmsg_json.c
+-+++ b/blobmsg_json.c
+-@@ -316,7 +316,7 @@ static void setup_strbuf(struct strbuf *
+- 
+- char *blobmsg_format_json_with_cb(struct blob_attr *attr, bool list, blobmsg_json_format_t cb, void *priv, int indent)
+- {
+--	struct strbuf s;
+-+	struct strbuf s = {0};
+- 	bool array;
+- 	char *ret;
+- 
+-@@ -350,7 +350,7 @@ char *blobmsg_format_json_with_cb(struct
+- 
+- char *blobmsg_format_json_value_with_cb(struct blob_attr *attr, blobmsg_json_format_t cb, void *priv, int indent)
+- {
+--	struct strbuf s;
+-+	struct strbuf s = {0};
+- 	char *ret;
+- 
+- 	setup_strbuf(&s, attr, cb, priv, indent);
+diff --git a/package/libs/libubox/patches/0002-jshn-fix-off-by-one-in-jshn_parse_file.patch b/package/libs/libubox/patches/0002-jshn-fix-off-by-one-in-jshn_parse_file.patch
+deleted file mode 100644
+index 17a045f261..0000000000
+--- a/package/libs/libubox/patches/0002-jshn-fix-off-by-one-in-jshn_parse_file.patch
++++ /dev/null
+@@ -1,39 +0,0 @@
+-From f27853d71a2cb99ec5de3881716a14611ada307c Mon Sep 17 00:00:00 2001
+-From: =?UTF-8?q?Petr=20=C5=A0tetiar?= <ynezz@true.cz>
+-Date: Sat, 23 Nov 2019 22:48:25 +0100
+-Subject: jshn: fix off by one in jshn_parse_file
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-Fixes following error:
+-
+- Invalid read of size 1
+-   at 0x4C32D04: strlen
+-   by 0x5043367: json_tokener_parse_ex
+-   by 0x5045316: json_tokener_parse_verbose
+-   by 0x504537D: json_tokener_parse
+-   by 0x401AB1: jshn_parse (jshn.c:179)
+-   by 0x40190D: jshn_parse_file (jshn.c:370)
+-   by 0x40190D: main (jshn.c:434)
+- Address 0x5848c4c is 0 bytes after a block of size 1,036 alloc'd
+-   at 0x4C2FB0F: malloc
+-   by 0x4018E2: jshn_parse_file (jshn.c:357)
+-   by 0x4018E2: main (jshn.c:434)
+-
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- jshn.c | 2 +-
+- 1 file changed, 1 insertion(+), 1 deletion(-)
+-
+---- a/jshn.c
+-+++ b/jshn.c
+-@@ -384,7 +384,7 @@ int main(int argc, char **argv)
+- 				close(fd);
+- 				return 3;
+- 			}
+--			if (!(fbuf = malloc(sb.st_size))) {
+-+			if (!(fbuf = calloc(1, sb.st_size+1))) {
+- 				fprintf(stderr, "Error allocating memory for %s\n", optarg);
+- 				close(fd);
+- 				return 3;
+diff --git a/package/libs/libubox/patches/0003-blob-refactor-attr-parsing-into-separate-function.patch b/package/libs/libubox/patches/0003-blob-refactor-attr-parsing-into-separate-function.patch
+deleted file mode 100644
+index 81bffa587a..0000000000
+--- a/package/libs/libubox/patches/0003-blob-refactor-attr-parsing-into-separate-function.patch
++++ /dev/null
+@@ -1,97 +0,0 @@
+-From af2a074160e32692b570f8a3562b4370d38f34e7 Mon Sep 17 00:00:00 2001
+-From: =?UTF-8?q?Petr=20=C5=A0tetiar?= <ynezz@true.cz>
+-Date: Mon, 9 Dec 2019 13:53:27 +0100
+-Subject: blob: refactor attr parsing into separate function
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-Making blob_parse easier to review.
+-
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blob.c | 61 +++++++++++++++++++++++++++++++++-------------------------
+- 1 file changed, 35 insertions(+), 26 deletions(-)
+-
+---- a/blob.c
+-+++ b/blob.c
+-@@ -217,44 +217,53 @@ blob_check_type(const void *ptr, unsigne
+- 	return true;
+- }
+- 
+--int
+--blob_parse(struct blob_attr *attr, struct blob_attr **data, const struct blob_attr_info *info, int max)
+-+static int
+-+blob_parse_attr(struct blob_attr *attr, struct blob_attr **data, const struct blob_attr_info *info, int max)
+- {
+--	struct blob_attr *pos;
+- 	int found = 0;
+--	int rem;
+-+	int id = blob_id(attr);
+-+	size_t len = blob_len(attr);
+- 
+--	memset(data, 0, sizeof(struct blob_attr *) * max);
+--	blob_for_each_attr(pos, attr, rem) {
+--		int id = blob_id(pos);
+--		int len = blob_len(pos);
+-+	if (id >= max)
+-+		return 0;
+- 
+--		if (id >= max)
+--			continue;
+-+	if (info) {
+-+		int type = info[id].type;
+- 
+--		if (info) {
+--			int type = info[id].type;
+-+		if (type < BLOB_ATTR_LAST) {
+-+			if (!blob_check_type(blob_data(attr), len, type))
+-+				return 0;
+-+		}
+- 
+--			if (type < BLOB_ATTR_LAST) {
+--				if (!blob_check_type(blob_data(pos), len, type))
+--					continue;
+--			}
+-+		if (info[id].minlen && len < info[id].minlen)
+-+			return 0;
+- 
+--			if (info[id].minlen && len < info[id].minlen)
+--				continue;
+-+		if (info[id].maxlen && len > info[id].maxlen)
+-+			return 0;
+- 
+--			if (info[id].maxlen && len > info[id].maxlen)
+--				continue;
+-+		if (info[id].validate && !info[id].validate(&info[id], attr))
+-+			return 0;
+-+	}
+- 
+--			if (info[id].validate && !info[id].validate(&info[id], pos))
+--				continue;
+--		}
+-+	if (!data[id])
+-+		found++;
+- 
+--		if (!data[id])
+--			found++;
+-+	data[id] = attr;
+-+	return found;
+-+}
+- 
+--		data[id] = pos;
+-+int
+-+blob_parse(struct blob_attr *attr, struct blob_attr **data, const struct blob_attr_info *info, int max)
+-+{
+-+	struct blob_attr *pos;
+-+	int found = 0;
+-+	size_t rem;
+-+
+-+	memset(data, 0, sizeof(struct blob_attr *) * max);
+-+	blob_for_each_attr(pos, attr, rem) {
+-+		found += blob_parse_attr(pos, data, info, max);
+- 	}
+-+
+- 	return found;
+- }
+- 
+diff --git a/package/libs/libubox/patches/0004-blob-introduce-blob_parse_untrusted.patch b/package/libs/libubox/patches/0004-blob-introduce-blob_parse_untrusted.patch
+deleted file mode 100644
+index b624db2cfe..0000000000
+--- a/package/libs/libubox/patches/0004-blob-introduce-blob_parse_untrusted.patch
++++ /dev/null
+@@ -1,78 +0,0 @@
+-From b6a0a070f2e14808e835c2fcfa3820a55041902f Mon Sep 17 00:00:00 2001
+-From: =?UTF-8?q?Petr=20=C5=A0tetiar?= <ynezz@true.cz>
+-Date: Mon, 9 Dec 2019 14:11:45 +0100
+-Subject: blob: introduce blob_parse_untrusted
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-blob_parse can be only used on trusted input as it has no possibility to
+-check the length of the provided input buffer, which might lead to
+-undefined behaviour and/or crashes when supplied with malformed,
+-corrupted or otherwise specially crafted input.
+-
+-So this introduces blob_parse_untrusted variant which expects additional
+-input buffer length argument and thus should be able to process also
+-inputs from untrusted sources.
+-
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blob.c | 24 ++++++++++++++++++++++++
+- blob.h |  7 +++++++
+- 2 files changed, 31 insertions(+)
+-
+---- a/blob.c
+-+++ b/blob.c
+-@@ -253,6 +253,30 @@ blob_parse_attr(struct blob_attr *attr,
+- }
+- 
+- int
+-+blob_parse_untrusted(struct blob_attr *attr, size_t attr_len, struct blob_attr **data, const struct blob_attr_info *info, int max)
+-+{
+-+	struct blob_attr *pos;
+-+	size_t len = 0;
+-+	int found = 0;
+-+	size_t rem;
+-+
+-+	if (!attr || attr_len < sizeof(struct blob_attr))
+-+		return 0;
+-+
+-+	len = blob_raw_len(attr);
+-+	if (len != attr_len)
+-+		return 0;
+-+
+-+	memset(data, 0, sizeof(struct blob_attr *) * max);
+-+	blob_for_each_attr_len(pos, attr, len, rem) {
+-+		found += blob_parse_attr(pos, rem, data, info, max);
+-+	}
+-+
+-+	return found;
+-+}
+-+
+-+/* use only on trusted input, otherwise consider blob_parse_untrusted */
+-+int
+- blob_parse(struct blob_attr *attr, struct blob_attr **data, const struct blob_attr_info *info, int max)
+- {
+- 	struct blob_attr *pos;
+---- a/blob.h
+-+++ b/blob.h
+-@@ -199,6 +199,7 @@ extern void blob_nest_end(struct blob_bu
+- extern struct blob_attr *blob_put(struct blob_buf *buf, int id, const void *ptr, unsigned int len);
+- extern bool blob_check_type(const void *ptr, unsigned int len, int type);
+- extern int blob_parse(struct blob_attr *attr, struct blob_attr **data, const struct blob_attr_info *info, int max);
+-+extern int blob_parse_untrusted(struct blob_attr *attr, size_t attr_len, struct blob_attr **data, const struct blob_attr_info *info, int max);
+- extern struct blob_attr *blob_memdup(struct blob_attr *attr);
+- extern struct blob_attr *blob_put_raw(struct blob_buf *buf, const void *ptr, unsigned int len);
+- 
+-@@ -254,5 +255,11 @@ blob_put_u64(struct blob_buf *buf, int i
+- 	     (blob_pad_len(pos) >= sizeof(struct blob_attr)); \
+- 	     rem -= blob_pad_len(pos), pos = blob_next(pos))
+- 
+-+#define blob_for_each_attr_len(pos, attr, attr_len, rem) \
+-+	for (rem = attr ? blob_len(attr) : 0, \
+-+	     pos = (struct blob_attr *) (attr ? blob_data(attr) : NULL); \
+-+	     rem >= sizeof(struct blob_attr) && rem < attr_len && (blob_pad_len(pos) <= rem) && \
+-+	     (blob_pad_len(pos) >= sizeof(struct blob_attr)); \
+-+	     rem -= blob_pad_len(pos), pos = blob_next(pos))
+- 
+- #endif
+diff --git a/package/libs/libubox/patches/0005-blob-fix-OOB-access-in-blob_check_type.patch b/package/libs/libubox/patches/0005-blob-fix-OOB-access-in-blob_check_type.patch
+deleted file mode 100644
+index e3d84c0279..0000000000
+--- a/package/libs/libubox/patches/0005-blob-fix-OOB-access-in-blob_check_type.patch
++++ /dev/null
+@@ -1,78 +0,0 @@
+-From 7425d421340594f50c717ff7129b6ee71280a447 Mon Sep 17 00:00:00 2001
+-From: =?UTF-8?q?Petr=20=C5=A0tetiar?= <ynezz@true.cz>
+-Date: Mon, 9 Dec 2019 15:27:16 +0100
+-Subject: blob: fix OOB access in blob_check_type
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-Found by fuzzer:
+-
+- ERROR: AddressSanitizer: SEGV on unknown address 0x602100000455
+- The signal is caused by a READ memory access.
+-     #0 in blob_check_type blob.c:214:43
+-     #1 in blob_parse_attr blob.c:234:9
+-     #2 in blob_parse_untrusted blob.c:272:12
+-     #3 in fuzz_blob_parse tests/fuzzer/test-blob-parse-fuzzer.c:34:2
+-     #4 in LLVMFuzzerTestOneInput tests/fuzzer/test-blob-parse-fuzzer.c:39:2
+-
+-Caused by following line:
+-
+-	if (type == BLOB_ATTR_STRING && data[len - 1] != 0)
+-
+-where len was pointing outside of the data buffer.
+-
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blob.c | 23 ++++++++++++++++++-----
+- 1 file changed, 18 insertions(+), 5 deletions(-)
+-
+---- a/blob.c
+-+++ b/blob.c
+-@@ -218,20 +218,33 @@ blob_check_type(const void *ptr, unsigne
+- }
+- 
+- static int
+--blob_parse_attr(struct blob_attr *attr, struct blob_attr **data, const struct blob_attr_info *info, int max)
+-+blob_parse_attr(struct blob_attr *attr, size_t attr_len, struct blob_attr **data, const struct blob_attr_info *info, int max)
+- {
+-+	int id;
+-+	size_t len;
+- 	int found = 0;
+--	int id = blob_id(attr);
+--	size_t len = blob_len(attr);
+-+	size_t data_len;
+- 
+-+	if (!attr || attr_len < sizeof(struct blob_attr))
+-+		return 0;
+-+
+-+	id = blob_id(attr);
+- 	if (id >= max)
+- 		return 0;
+- 
+-+	len = blob_raw_len(attr);
+-+	if (len > attr_len || len < sizeof(struct blob_attr))
+-+		return 0;
+-+
+-+	data_len = blob_len(attr);
+-+	if (data_len > len)
+-+		return 0;
+-+
+- 	if (info) {
+- 		int type = info[id].type;
+- 
+- 		if (type < BLOB_ATTR_LAST) {
+--			if (!blob_check_type(blob_data(attr), len, type))
+-+			if (!blob_check_type(blob_data(attr), data_len, type))
+- 				return 0;
+- 		}
+- 
+-@@ -285,7 +298,7 @@ blob_parse(struct blob_attr *attr, struc
+- 
+- 	memset(data, 0, sizeof(struct blob_attr *) * max);
+- 	blob_for_each_attr(pos, attr, rem) {
+--		found += blob_parse_attr(pos, data, info, max);
+-+		found += blob_parse_attr(pos, rem, data, info, max);
+- 	}
+- 
+- 	return found;
+diff --git a/package/libs/libubox/patches/0006-blobmsg-fix-heap-buffer-overflow-in-blobmsg_parse.patch b/package/libs/libubox/patches/0006-blobmsg-fix-heap-buffer-overflow-in-blobmsg_parse.patch
+deleted file mode 100644
+index 37be1bb5ad..0000000000
+--- a/package/libs/libubox/patches/0006-blobmsg-fix-heap-buffer-overflow-in-blobmsg_parse.patch
++++ /dev/null
+@@ -1,32 +0,0 @@
+-From 0773eef13674964d890420673d2501342979d8bf Mon Sep 17 00:00:00 2001
+-From: =?UTF-8?q?Petr=20=C5=A0tetiar?= <ynezz@true.cz>
+-Date: Tue, 10 Dec 2019 12:02:40 +0100
+-Subject: blobmsg: fix heap buffer overflow in blobmsg_parse
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-Fixes following error found by the fuzzer:
+-
+- ==29774==ERROR: AddressSanitizer: heap-buffer-overflow
+- READ of size 1 at 0x6020004f1c56 thread T0
+-     #0 strcmp sanitizer_common_interceptors.inc:442:3
+-     #1 blobmsg_parse blobmsg.c:168:8
+-
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blobmsg.c | 3 +++
+- 1 file changed, 3 insertions(+)
+-
+---- a/blobmsg.c
+-+++ b/blobmsg.c
+-@@ -52,6 +52,9 @@ bool blobmsg_check_attr(const struct blo
+- 
+- 	id = blob_id(attr);
+- 	len = blobmsg_data_len(attr);
+-+	if (len > blob_raw_len(attr))
+-+		return false;
+-+
+- 	data = blobmsg_data(attr);
+- 
+- 	if (id > BLOBMSG_TYPE_LAST)
+diff --git a/package/libs/libubox/patches/0007-Ensure-blob_attr-length-check-does-not-perform-out-o.patch b/package/libs/libubox/patches/0007-Ensure-blob_attr-length-check-does-not-perform-out-o.patch
+deleted file mode 100644
+index d17e27cbfc..0000000000
+--- a/package/libs/libubox/patches/0007-Ensure-blob_attr-length-check-does-not-perform-out-o.patch
++++ /dev/null
+@@ -1,51 +0,0 @@
+-From cec3ed2550073abbfe0f1f6131c44f90c9d05aa8 Mon Sep 17 00:00:00 2001
+-From: Tobias Schramm <tobleminer@gmail.com>
+-Date: Wed, 28 Nov 2018 13:39:29 +0100
+-Subject: Ensure blob_attr length check does not perform out of bounds reads
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-Before there might have been as little as one single byte left which
+-would result in 3 bytes of blob_attr->id_len being out of bounds.
+-
+-Acked-by: Yousong Zhou <yszhou4tech@gmail.com>
+-Signed-off-by: Tobias Schramm <tobleminer@gmail.com>
+-[line wrapped < 72 chars]
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blob.h    | 4 ++--
+- blobmsg.h | 2 +-
+- 2 files changed, 3 insertions(+), 3 deletions(-)
+-
+---- a/blob.h
+-+++ b/blob.h
+-@@ -243,7 +243,7 @@ blob_put_u64(struct blob_buf *buf, int i
+- 
+- #define __blob_for_each_attr(pos, attr, rem) \
+- 	for (pos = (struct blob_attr *) attr; \
+--	     rem > 0 && (blob_pad_len(pos) <= rem) && \
+-+	     rem >= sizeof(struct blob_attr) && (blob_pad_len(pos) <= rem) && \
+- 	     (blob_pad_len(pos) >= sizeof(struct blob_attr)); \
+- 	     rem -= blob_pad_len(pos), pos = blob_next(pos))
+- 
+-@@ -251,7 +251,7 @@ blob_put_u64(struct blob_buf *buf, int i
+- #define blob_for_each_attr(pos, attr, rem) \
+- 	for (rem = attr ? blob_len(attr) : 0, \
+- 	     pos = (struct blob_attr *) (attr ? blob_data(attr) : NULL); \
+--	     rem > 0 && (blob_pad_len(pos) <= rem) && \
+-+	     rem >= sizeof(struct blob_attr) && (blob_pad_len(pos) <= rem) && \
+- 	     (blob_pad_len(pos) >= sizeof(struct blob_attr)); \
+- 	     rem -= blob_pad_len(pos), pos = blob_next(pos))
+- 
+---- a/blobmsg.h
+-+++ b/blobmsg.h
+-@@ -266,7 +266,7 @@ int blobmsg_printf(struct blob_buf *buf,
+- #define blobmsg_for_each_attr(pos, attr, rem) \
+- 	for (rem = attr ? blobmsg_data_len(attr) : 0, \
+- 	     pos = (struct blob_attr *) (attr ? blobmsg_data(attr) : NULL); \
+--	     rem > 0 && (blob_pad_len(pos) <= rem) && \
+-+	     rem >= sizeof(struct blob_attr) && (blob_pad_len(pos) <= rem) && \
+- 	     (blob_pad_len(pos) >= sizeof(struct blob_attr)); \
+- 	     rem -= blob_pad_len(pos), pos = blob_next(pos))
+- 
+diff --git a/package/libs/libubox/patches/0008-Replace-use-of-blobmsg_check_attr-by-blobmsg_check_a.patch b/package/libs/libubox/patches/0008-Replace-use-of-blobmsg_check_attr-by-blobmsg_check_a.patch
+deleted file mode 100644
+index 77de70afd0..0000000000
+--- a/package/libs/libubox/patches/0008-Replace-use-of-blobmsg_check_attr-by-blobmsg_check_a.patch
++++ /dev/null
+@@ -1,132 +0,0 @@
+-From 8b6a401638317906b6d9039417c1c19ea8cfeab0 Mon Sep 17 00:00:00 2001
+-From: Tobias Schramm <tobleminer@gmail.com>
+-Date: Tue, 13 Nov 2018 04:16:12 +0100
+-Subject: Replace use of blobmsg_check_attr by blobmsg_check_attr_len
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-blobmsg_check_attr_len adds a length limit specifying the max offset
+-from attr that can be read safely.
+-
+-Signed-off-by: Tobias Schramm <tobleminer@gmail.com>
+-[rebased and reworked, line wrapped commit message, _safe -> _len]
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blobmsg.c | 59 +++++++++++++++++++++++++++++++++++++++++++------------
+- blobmsg.h |  2 ++
+- 2 files changed, 48 insertions(+), 13 deletions(-)
+-
+---- a/blobmsg.c
+-+++ b/blobmsg.c
+-@@ -33,37 +33,70 @@ blobmsg_namelen(const struct blobmsg_hdr
+- 
+- bool blobmsg_check_attr(const struct blob_attr *attr, bool name)
+- {
+-+	return blobmsg_check_attr_len(attr, name, blob_raw_len(attr));
+-+}
+-+
+-+static bool blobmsg_check_name(const struct blob_attr *attr, size_t len, bool name)
+-+{
+-+	char *limit = (char *) attr + len;
+- 	const struct blobmsg_hdr *hdr;
+--	const char *data;
+--	int id, len;
+- 
+--	if (blob_len(attr) < sizeof(struct blobmsg_hdr))
+-+	hdr = blob_data(attr);
+-+	if (name && !hdr->namelen)
+- 		return false;
+- 
+--	hdr = (void *) attr->data;
+--	if (!hdr->namelen && name)
+-+	if ((char *) hdr->name + blobmsg_namelen(hdr) > limit)
+- 		return false;
+- 
+--	if (blobmsg_namelen(hdr) > blob_len(attr) - sizeof(struct blobmsg_hdr))
+-+	if (blobmsg_namelen(hdr) > (blob_len(attr) - sizeof(struct blobmsg_hdr)))
+- 		return false;
+- 
+- 	if (hdr->name[blobmsg_namelen(hdr)] != 0)
+- 		return false;
+- 
+--	id = blob_id(attr);
+--	len = blobmsg_data_len(attr);
+--	if (len > blob_raw_len(attr))
+--		return false;
+-+	return true;
+-+}
+-+
+-+static const char* blobmsg_check_data(const struct blob_attr *attr, size_t len, size_t *data_len)
+-+{
+-+	char *limit = (char *) attr + len;
+-+	const char *data;
+-+
+-+	*data_len = blobmsg_data_len(attr);
+-+	if (*data_len > blob_raw_len(attr))
+-+		return NULL;
+- 
+- 	data = blobmsg_data(attr);
+-+	if (data + *data_len > limit)
+-+		return NULL;
+- 
+-+	return data;
+-+}
+-+
+-+bool blobmsg_check_attr_len(const struct blob_attr *attr, bool name, size_t len)
+-+{
+-+	const char *data;
+-+	size_t data_len;
+-+	int id;
+-+
+-+	if (len < sizeof(struct blob_attr))
+-+		return false;
+-+
+-+	if (!blobmsg_check_name(attr, len, name))
+-+		return false;
+-+
+-+	id = blob_id(attr);
+- 	if (id > BLOBMSG_TYPE_LAST)
+- 		return false;
+- 
+- 	if (!blob_type[id])
+- 		return true;
+- 
+--	return blob_check_type(data, len, blob_type[id]);
+-+	data = blobmsg_check_data(attr, len, &data_len);
+-+	if (!data)
+-+		return false;
+-+
+-+	return blob_check_type(data, data_len, blob_type[id]);
+- }
+- 
+- int blobmsg_check_array(const struct blob_attr *attr, int type)
+-@@ -114,7 +147,7 @@ int blobmsg_parse_array(const struct blo
+- 		    blob_id(attr) != policy[i].type)
+- 			continue;
+- 
+--		if (!blobmsg_check_attr(attr, false))
+-+		if (!blobmsg_check_attr_len(attr, false, len))
+- 			return -1;
+- 
+- 		if (tb[i])
+-@@ -161,7 +194,7 @@ int blobmsg_parse(const struct blobmsg_p
+- 			if (blobmsg_namelen(hdr) != pslen[i])
+- 				continue;
+- 
+--			if (!blobmsg_check_attr(attr, true))
+-+			if (!blobmsg_check_attr_len(attr, true, len))
+- 				return -1;
+- 
+- 			if (tb[i])
+---- a/blobmsg.h
+-+++ b/blobmsg.h
+-@@ -107,6 +107,8 @@ static inline int blobmsg_len(const stru
+- bool blobmsg_check_attr(const struct blob_attr *attr, bool name);
+- bool blobmsg_check_attr_list(const struct blob_attr *attr, int type);
+- 
+-+bool blobmsg_check_attr_len(const struct blob_attr *attr, bool name, size_t len);
+-+
+- /*
+-  * blobmsg_check_array: validate array/table and return size
+-  *
+diff --git a/package/libs/libubox/patches/0009-blobmsg-add-_len-variants-for-all-attribute-checking.patch b/package/libs/libubox/patches/0009-blobmsg-add-_len-variants-for-all-attribute-checking.patch
+deleted file mode 100644
+index 7f90df1638..0000000000
+--- a/package/libs/libubox/patches/0009-blobmsg-add-_len-variants-for-all-attribute-checking.patch
++++ /dev/null
+@@ -1,157 +0,0 @@
+-From ad29d0304983e283d4aec4ee5462942eaf5c03ac Mon Sep 17 00:00:00 2001
+-From: Tobias Schramm <tobleminer@gmail.com>
+-Date: Thu, 15 Nov 2018 03:42:48 +0100
+-Subject: blobmsg: add _len variants for all attribute checking methods
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-Introduce _len variants of blobmsg attribute checking functions which
+-aims to provide safer implementation as those functions should limit all
+-memory accesses performed on the blob to the range [attr, attr + len]
+-(upper bound non inclusive) and thus should be suited for checking of
+-untrusted blob attributes.
+-
+-While at it add some comments in order to make it clear.
+-
+-Signed-off-by: Tobias Schramm <tobleminer@gmail.com>
+-[_safe -> _len, blobmsg_check_array_len fix, commit subject/desc facelift]
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blobmsg.c | 21 ++++++++++++++++++---
+- blobmsg.h | 55 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+- 2 files changed, 72 insertions(+), 4 deletions(-)
+-
+---- a/blobmsg.c
+-+++ b/blobmsg.c
+-@@ -101,11 +101,21 @@ bool blobmsg_check_attr_len(const struct
+- 
+- int blobmsg_check_array(const struct blob_attr *attr, int type)
+- {
+-+	return blobmsg_check_array_len(attr, type, blob_raw_len(attr));
+-+}
+-+
+-+int blobmsg_check_array_len(const struct blob_attr *attr, int type, size_t len)
+-+{
+- 	struct blob_attr *cur;
+- 	bool name;
+--	int rem;
+- 	int size = 0;
+- 
+-+	if (type > BLOBMSG_TYPE_LAST)
+-+		return -1;
+-+
+-+	if (!blobmsg_check_attr_len(attr, false, len))
+-+		return -1;
+-+
+- 	switch (blobmsg_type(attr)) {
+- 	case BLOBMSG_TYPE_TABLE:
+- 		name = true;
+-@@ -117,11 +127,11 @@ int blobmsg_check_array(const struct blo
+- 		return -1;
+- 	}
+- 
+--	blobmsg_for_each_attr(cur, attr, rem) {
+-+	__blobmsg_for_each_attr(cur, attr, len) {
+- 		if (type != BLOBMSG_TYPE_UNSPEC && blobmsg_type(cur) != type)
+- 			return -1;
+- 
+--		if (!blobmsg_check_attr(cur, name))
+-+		if (!blobmsg_check_attr_len(cur, name, len))
+- 			return -1;
+- 
+- 		size++;
+-@@ -135,6 +145,11 @@ bool blobmsg_check_attr_list(const struc
+- 	return blobmsg_check_array(attr, type) >= 0;
+- }
+- 
+-+bool blobmsg_check_attr_list_len(const struct blob_attr *attr, int type, size_t len)
+-+{
+-+	return blobmsg_check_array_len(attr, type, len) >= 0;
+-+}
+-+
+- int blobmsg_parse_array(const struct blobmsg_policy *policy, int policy_len,
+- 			struct blob_attr **tb, void *data, unsigned int len)
+- {
+---- a/blobmsg.h
+-+++ b/blobmsg.h
+-@@ -104,19 +104,66 @@ static inline int blobmsg_len(const stru
+- 	return blobmsg_data_len(attr);
+- }
+- 
+-+/*
+-+ * blobmsg_check_attr: validate a list of attributes
+-+ *
+-+ * This method may be used with trusted data only. Providing
+-+ * malformed blobs will cause out of bounds memory access.
+-+ */
+- bool blobmsg_check_attr(const struct blob_attr *attr, bool name);
+--bool blobmsg_check_attr_list(const struct blob_attr *attr, int type);
+- 
+-+/*
+-+ * blobmsg_check_attr_len: validate a list of attributes
+-+ *
+-+ * This method should be safer implementation of blobmsg_check_attr.
+-+ * It will limit all memory access performed on the blob to the
+-+ * range [attr, attr + len] (upper bound non inclusive) and is
+-+ * thus suited for checking of untrusted blob attributes.
+-+ */
+- bool blobmsg_check_attr_len(const struct blob_attr *attr, bool name, size_t len);
+- 
+- /*
+-+ * blobmsg_check_attr_list: validate a list of attributes
+-+ *
+-+ * This method may be used with trusted data only. Providing
+-+ * malformed blobs will cause out of bounds memory access.
+-+ */
+-+bool blobmsg_check_attr_list(const struct blob_attr *attr, int type);
+-+
+-+/*
+-+ * blobmsg_check_attr_list_len: validate a list of untrusted attributes
+-+ *
+-+ * This method should be safer implementation of blobmsg_check_attr_list.
+-+ * It will limit all memory access performed on the blob to the
+-+ * range [attr, attr + len] (upper bound non inclusive) and is
+-+ * thus suited for checking of untrusted blob attributes.
+-+ */
+-+bool blobmsg_check_attr_list_len(const struct blob_attr *attr, int type, size_t len);
+-+
+-+/*
+-  * blobmsg_check_array: validate array/table and return size
+-  *
+-  * Checks if all elements of an array or table are valid and have
+-  * the specified type. Returns the number of elements in the array
+-+ *
+-+ * This method may be used with trusted data only. Providing
+-+ * malformed blobs will cause out of bounds memory access.
+-  */
+- int blobmsg_check_array(const struct blob_attr *attr, int type);
+- 
+-+/*
+-+ * blobmsg_check_array_len: validate untrusted array/table and return size
+-+ *
+-+ * Checks if all elements of an array or table are valid and have
+-+ * the specified type. Returns the number of elements in the array.
+-+ *
+-+ * This method should be safer implementation of blobmsg_check_array.
+-+ * It will limit all memory access performed on the blob to the
+-+ * range [attr, attr + len] (upper bound non inclusive) and is
+-+ * thus suited for checking of untrusted blob attributes.
+-+ */
+-+int blobmsg_check_array_len(const struct blob_attr *attr, int type, size_t len);
+-+
+- int blobmsg_parse(const struct blobmsg_policy *policy, int policy_len,
+-                   struct blob_attr **tb, void *data, unsigned int len);
+- int blobmsg_parse_array(const struct blobmsg_policy *policy, int policy_len,
+-@@ -271,5 +318,11 @@ int blobmsg_printf(struct blob_buf *buf,
+- 	     rem >= sizeof(struct blob_attr) && (blob_pad_len(pos) <= rem) && \
+- 	     (blob_pad_len(pos) >= sizeof(struct blob_attr)); \
+- 	     rem -= blob_pad_len(pos), pos = blob_next(pos))
+-+
+-+#define __blobmsg_for_each_attr(pos, attr, rem) \
+-+	for (pos = (struct blob_attr *) (attr ? blobmsg_data(attr) : NULL); \
+-+	     rem >= sizeof(struct blob_attr) && (blob_pad_len(pos) <= rem) && \
+-+	     (blob_pad_len(pos) >= sizeof(struct blob_attr)); \
+-+	     rem -= blob_pad_len(pos), pos = blob_next(pos))
+- 
+- #endif
+diff --git a/package/libs/libubox/patches/0010-blobmsg-fix-array-out-of-bounds-GCC-10-warning.patch b/package/libs/libubox/patches/0010-blobmsg-fix-array-out-of-bounds-GCC-10-warning.patch
+deleted file mode 100644
+index 61f73493df..0000000000
+--- a/package/libs/libubox/patches/0010-blobmsg-fix-array-out-of-bounds-GCC-10-warning.patch
++++ /dev/null
+@@ -1,39 +0,0 @@
+-From 44d9e85ef058fbb9981d53218cafdc451afa5535 Mon Sep 17 00:00:00 2001
+-From: =?UTF-8?q?Petr=20=C5=A0tetiar?= <ynezz@true.cz>
+-Date: Wed, 25 Dec 2019 10:27:59 +0100
+-Subject: blobmsg: fix array out of bounds GCC 10 warning
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-Fixes following warning reported by GCC 10.0.0 20191203:
+-
+- blobmsg.c:234:2: error: 'strcpy' offset 6 from the object at 'attr' is out of the bounds of referenced subobject 'name' with type 'uint8_t[0]' {aka 'unsigned char[0]'} at offset 6 [-Werror=array-bounds]
+-   234 |  strcpy((char *) hdr->name, (const char *)name);
+-       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-
+- In file included from blobmsg.c:16:
+- blobmsg.h:42:10: note: subobject 'name' declared here
+-    42 |  uint8_t name[];
+-       |          ^~~~
+-
+-Reported-by: Khem Raj <raj.khem@gmail.com>
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blobmsg.c | 5 ++++-
+- 1 file changed, 4 insertions(+), 1 deletion(-)
+-
+---- a/blobmsg.c
+-+++ b/blobmsg.c
+-@@ -246,7 +246,10 @@ blobmsg_new(struct blob_buf *buf, int ty
+- 	attr->id_len |= be32_to_cpu(BLOB_ATTR_EXTENDED);
+- 	hdr = blob_data(attr);
+- 	hdr->namelen = cpu_to_be16(namelen);
+--	strcpy((char *) hdr->name, (const char *)name);
+-+
+-+	memcpy(hdr->name, name, namelen);
+-+	hdr->name[namelen] = '\0';
+-+
+- 	pad_end = *data = blobmsg_data(attr);
+- 	pad_start = (char *) &hdr->name[namelen];
+- 	if (pad_start < pad_end)
+diff --git a/package/libs/libubox/patches/0011-blobmsg-fix-wrong-payload-len-passed-from-blobmsg_ch.patch b/package/libs/libubox/patches/0011-blobmsg-fix-wrong-payload-len-passed-from-blobmsg_ch.patch
+deleted file mode 100644
+index 2ebbfc6c47..0000000000
+--- a/package/libs/libubox/patches/0011-blobmsg-fix-wrong-payload-len-passed-from-blobmsg_ch.patch
++++ /dev/null
+@@ -1,38 +0,0 @@
+-From d0f05d5e6873b30315127d47abbf4ac9f3c8bfb7 Mon Sep 17 00:00:00 2001
+-From: =?UTF-8?q?Petr=20=C5=A0tetiar?= <ynezz@true.cz>
+-Date: Sat, 28 Dec 2019 19:00:39 +0100
+-Subject: blobmsg: fix wrong payload len passed from blobmsg_check_array
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-Fix incorrect use of blob_raw_len() on passed blobmsg to
+-blobmsg_check_array_len()  introduced in commit b0e21553ae8c ("blobmsg:
+-add _len variants for all attribute checking methods") by using correct
+-blobmsg_len().
+-
+-This wrong (higher) length was then for example causing issues in
+-procd's instance_config_parse_command() where blobmsg_check_attr_list()
+-was failing sanity checking of service command, thus resulting in the
+-startup failures of some services like collectd, nlbwmon and samba4.
+-
+-Ref: http://lists.infradead.org/pipermail/openwrt-devel/2019-December/020840.html
+-Fixes: b0e21553ae8c ("blobmsg: add _len variants for all attribute checking methods")
+-Reported-by: Hannu Nyman <hannu.nyman@welho.com>
+-Tested-by: Kevin Darbyshire-Bryant <ldir@darbyshire-bryant.me.uk>
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blobmsg.c | 2 +-
+- 1 file changed, 1 insertion(+), 1 deletion(-)
+-
+---- a/blobmsg.c
+-+++ b/blobmsg.c
+-@@ -101,7 +101,7 @@ bool blobmsg_check_attr_len(const struct
+- 
+- int blobmsg_check_array(const struct blob_attr *attr, int type)
+- {
+--	return blobmsg_check_array_len(attr, type, blob_raw_len(attr));
+-+	return blobmsg_check_array_len(attr, type, blobmsg_len(attr));
+- }
+- 
+- int blobmsg_check_array_len(const struct blob_attr *attr, int type, size_t len)
+diff --git a/package/libs/libubox/patches/0012-jshn-prefer-snprintf-usage.patch b/package/libs/libubox/patches/0012-jshn-prefer-snprintf-usage.patch
+deleted file mode 100644
+index e551fed7ea..0000000000
+--- a/package/libs/libubox/patches/0012-jshn-prefer-snprintf-usage.patch
++++ /dev/null
+@@ -1,61 +0,0 @@
+-From 31778937b4153492955495e550435c8bbf7cfde8 Mon Sep 17 00:00:00 2001
+-From: =?UTF-8?q?Petr=20=C5=A0tetiar?= <ynezz@true.cz>
+-Date: Tue, 14 Jan 2020 08:55:34 +0100
+-Subject: jshn: prefer snprintf usage
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-Better safe than sorry.
+-
+-Reviewed-by: Jo-Philipp Wich <jo@mein.io>
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- jshn.c | 16 +++++++++-------
+- 1 file changed, 9 insertions(+), 7 deletions(-)
+-
+---- a/jshn.c
+-+++ b/jshn.c
+-@@ -68,7 +68,7 @@ static int add_json_array(struct array_l
+- 	int ret;
+- 
+- 	for (i = 0, len = array_list_length(a); i < len; i++) {
+--		sprintf(seq, "%d", i);
+-+		snprintf(seq, sizeof(seq), "%d", i);
+- 		ret = add_json_element(seq, array_list_get_idx(a, i));
+- 		if (ret)
+- 			return ret;
+-@@ -197,25 +197,27 @@ static char *getenv_avl(const char *key)
+- static char *get_keys(const char *prefix)
+- {
+- 	char *keys;
+-+	size_t len = var_prefix_len + strlen(prefix) + sizeof("K_") + 1;
+- 
+--	keys = alloca(var_prefix_len + strlen(prefix) + sizeof("K_") + 1);
+--	sprintf(keys, "%sK_%s", var_prefix, prefix);
+-+	keys = alloca(len);
+-+	snprintf(keys, len, "%sK_%s", var_prefix, prefix);
+- 	return getenv_avl(keys);
+- }
+- 
+- static void get_var(const char *prefix, const char **name, char **var, char **type)
+- {
+- 	char *tmpname, *varname;
+-+	size_t len = var_prefix_len + strlen(prefix) + 1 + strlen(*name) + 1 + sizeof("T_");
+- 
+--	tmpname = alloca(var_prefix_len + strlen(prefix) + 1 + strlen(*name) + 1 + sizeof("T_"));
+-+	tmpname = alloca(len);
+- 
+--	sprintf(tmpname, "%s%s_%s", var_prefix, prefix, *name);
+-+	snprintf(tmpname, len, "%s%s_%s", var_prefix, prefix, *name);
+- 	*var = getenv_avl(tmpname);
+- 
+--	sprintf(tmpname, "%sT_%s_%s", var_prefix, prefix, *name);
+-+	snprintf(tmpname, len, "%sT_%s_%s", var_prefix, prefix, *name);
+- 	*type = getenv_avl(tmpname);
+- 
+--	sprintf(tmpname, "%sN_%s_%s", var_prefix, prefix, *name);
+-+	snprintf(tmpname, len, "%sN_%s_%s", var_prefix, prefix, *name);
+- 	varname = getenv_avl(tmpname);
+- 	if (varname)
+- 		*name = varname;
+diff --git a/package/libs/libubox/patches/0013-blobmsg-blobmsg_vprintf-prefer-vsnprintf.patch b/package/libs/libubox/patches/0013-blobmsg-blobmsg_vprintf-prefer-vsnprintf.patch
+deleted file mode 100644
+index 2ed0907b07..0000000000
+--- a/package/libs/libubox/patches/0013-blobmsg-blobmsg_vprintf-prefer-vsnprintf.patch
++++ /dev/null
+@@ -1,38 +0,0 @@
+-From 935bb933e4a74de7326a4373340fd50655712334 Mon Sep 17 00:00:00 2001
+-From: =?UTF-8?q?Petr=20=C5=A0tetiar?= <ynezz@true.cz>
+-Date: Tue, 14 Jan 2020 08:57:05 +0100
+-Subject: blobmsg: blobmsg_vprintf: prefer vsnprintf
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-Better safe than sorry and while at it add handling of possible
+-*printf() failures.
+-
+-Reviewed-by: Jo-Philipp Wich <jo@mein.io>
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blobmsg.c | 9 ++++++++-
+- 1 file changed, 8 insertions(+), 1 deletion(-)
+-
+---- a/blobmsg.c
+-+++ b/blobmsg.c
+-@@ -296,10 +296,17 @@ blobmsg_vprintf(struct blob_buf *buf, co
+- 	len = vsnprintf(&cbuf, sizeof(cbuf), format, arg2);
+- 	va_end(arg2);
+- 
+-+	if (len < 0)
+-+		return -1;
+-+
+- 	sbuf = blobmsg_alloc_string_buffer(buf, name, len + 1);
+- 	if (!sbuf)
+- 		return -1;
+--	ret = vsprintf(sbuf, format, arg);
+-+
+-+	ret = vsnprintf(sbuf, len + 1, format, arg);
+-+	if (ret < 0)
+-+		return -1;
+-+
+- 	blobmsg_add_string_buffer(buf);
+- 
+- 	return ret;
+diff --git a/package/libs/libubox/patches/0014-blobmsg_json-fix-int16-serialization.patch b/package/libs/libubox/patches/0014-blobmsg_json-fix-int16-serialization.patch
+deleted file mode 100644
+index a79ce4adbc..0000000000
+--- a/package/libs/libubox/patches/0014-blobmsg_json-fix-int16-serialization.patch
++++ /dev/null
+@@ -1,41 +0,0 @@
+-From 1cc755d7c3989b399bf0c60535a858d22819ca27 Mon Sep 17 00:00:00 2001
+-From: =?UTF-8?q?Petr=20=C5=A0tetiar?= <ynezz@true.cz>
+-Date: Sun, 12 Jan 2020 22:40:18 +0100
+-Subject: blobmsg_json: fix int16 serialization
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-int16 blobmsg type is currently being serialized as uint16_t due to
+-missing cast during JSON output.
+-
+-Following blobmsg content:
+-
+- bar-min: -32768 (i16)
+- bar-max: 32767 (i16)
+-
+-Produces following JSON:
+-
+- { "bar-min":32768,"bar-max":32767 }
+-
+-Whereas one would expect:
+-
+- { "bar-min":-32768,"bar-max":32767 }
+-
+-Reviewed-by: Jo-Philipp Wich <jo@mein.io>
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blobmsg_json.c | 2 +-
+- 1 file changed, 1 insertion(+), 1 deletion(-)
+-
+---- a/blobmsg_json.c
+-+++ b/blobmsg_json.c
+-@@ -250,7 +250,7 @@ static void blobmsg_format_element(struc
+- 		sprintf(buf, "%s", *(uint8_t *)data ? "true" : "false");
+- 		break;
+- 	case BLOBMSG_TYPE_INT16:
+--		sprintf(buf, "%d", be16_to_cpu(*(uint16_t *)data));
+-+		sprintf(buf, "%d", (int16_t) be16_to_cpu(*(uint16_t *)data));
+- 		break;
+- 	case BLOBMSG_TYPE_INT32:
+- 		sprintf(buf, "%d", (int32_t) be32_to_cpu(*(uint32_t *)data));
+diff --git a/package/libs/libubox/patches/0015-blobmsg_json-prefer-snprintf-usage.patch b/package/libs/libubox/patches/0015-blobmsg_json-prefer-snprintf-usage.patch
+deleted file mode 100644
+index d5709a6e4f..0000000000
+--- a/package/libs/libubox/patches/0015-blobmsg_json-prefer-snprintf-usage.patch
++++ /dev/null
+@@ -1,66 +0,0 @@
+-From 0e330ec3662795aea42ac36ecf7a9f32a249c36d Mon Sep 17 00:00:00 2001
+-From: =?UTF-8?q?Petr=20=C5=A0tetiar?= <ynezz@true.cz>
+-Date: Tue, 14 Jan 2020 09:05:02 +0100
+-Subject: blobmsg_json: prefer snprintf usage
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-Better safe than sorry and while at it prefer use of PRId16 and PRId32
+-formatting constants as well.
+-
+-Reviewed-by: Jo-Philipp Wich <jo@mein.io>
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blobmsg_json.c | 16 ++++++++--------
+- 1 file changed, 8 insertions(+), 8 deletions(-)
+-
+---- a/blobmsg_json.c
+-+++ b/blobmsg_json.c
+-@@ -203,7 +203,7 @@ static void blobmsg_format_string(struct
+- 		buf[1] = escape;
+- 
+- 		if (escape == 'u') {
+--			sprintf(buf + 4, "%02x", (unsigned char) *p);
+-+			snprintf(buf + 4, sizeof(buf) - 4, "%02x", (unsigned char) *p);
+- 			len = 6;
+- 		} else {
+- 			len = 2;
+-@@ -220,7 +220,7 @@ static void blobmsg_format_json_list(str
+- static void blobmsg_format_element(struct strbuf *s, struct blob_attr *attr, bool without_name, bool head)
+- {
+- 	const char *data_str;
+--	char buf[32];
+-+	char buf[317];
+- 	void *data;
+- 	int len;
+- 
+-@@ -244,22 +244,22 @@ static void blobmsg_format_element(struc
+- 	data_str = buf;
+- 	switch(blob_id(attr)) {
+- 	case BLOBMSG_TYPE_UNSPEC:
+--		sprintf(buf, "null");
+-+		snprintf(buf, sizeof(buf), "null");
+- 		break;
+- 	case BLOBMSG_TYPE_BOOL:
+--		sprintf(buf, "%s", *(uint8_t *)data ? "true" : "false");
+-+		snprintf(buf, sizeof(buf), "%s", *(uint8_t *)data ? "true" : "false");
+- 		break;
+- 	case BLOBMSG_TYPE_INT16:
+--		sprintf(buf, "%d", (int16_t) be16_to_cpu(*(uint16_t *)data));
+-+		snprintf(buf, sizeof(buf), "%" PRId16, (int16_t) be16_to_cpu(*(uint16_t *)data));
+- 		break;
+- 	case BLOBMSG_TYPE_INT32:
+--		sprintf(buf, "%d", (int32_t) be32_to_cpu(*(uint32_t *)data));
+-+		snprintf(buf, sizeof(buf), "%" PRId32, (int32_t) be32_to_cpu(*(uint32_t *)data));
+- 		break;
+- 	case BLOBMSG_TYPE_INT64:
+--		sprintf(buf, "%" PRId64, (int64_t) be64_to_cpu(*(uint64_t *)data));
+-+		snprintf(buf, sizeof(buf), "%" PRId64, (int64_t) be64_to_cpu(*(uint64_t *)data));
+- 		break;
+- 	case BLOBMSG_TYPE_DOUBLE:
+--		sprintf(buf, "%lf", blobmsg_get_double(attr));
+-+		snprintf(buf, sizeof(buf), "%lf", blobmsg_get_double(attr));
+- 		break;
+- 	case BLOBMSG_TYPE_STRING:
+- 		blobmsg_format_string(s, data);
+diff --git a/package/libs/libubox/patches/0016-blobmsg-blobmsg_parse-and-blobmsg_parse_array-oob-re.patch b/package/libs/libubox/patches/0016-blobmsg-blobmsg_parse-and-blobmsg_parse_array-oob-re.patch
+deleted file mode 100644
+index c5d6df58e9..0000000000
+--- a/package/libs/libubox/patches/0016-blobmsg-blobmsg_parse-and-blobmsg_parse_array-oob-re.patch
++++ /dev/null
+@@ -1,110 +0,0 @@
+-From 6289e2d29883d5d9510b6a15c18c597478967a42 Mon Sep 17 00:00:00 2001
+-From: Juraj Vijtiuk <juraj.vijtiuk@sartura.hr>
+-Date: Sun, 12 Jan 2020 12:26:18 +0100
+-Subject: blobmsg: blobmsg_parse and blobmsg_parse_array oob read fixes
+-MIME-Version: 1.0
+-Content-Type: text/plain; charset=UTF-8
+-Content-Transfer-Encoding: 8bit
+-
+-Fix out of bounds read in blobmsg_parse and blobmsg_check_name. The
+-out of bounds read happens because blob_attr and blobmsg_hdr have
+-flexible array members, whose size is 0 in the corresponding sizeofs.
+-For example the __blob_for_each_attr macro checks whether rem >=
+-sizeof(struct blob_attr). However, what LibFuzzer discovered was,
+-if the input data was only 4 bytes, the data would be casted to blob_attr,
+-and later on blob_data(attr) would be called even though attr->data was empty.
+-The same issue could appear with data larger than 4 bytes, where data
+-wasn't empty, but contained only the start of the blobmsg_hdr struct,
+-and blobmsg_hdr name was empty. The bugs were discovered by fuzzing
+-blobmsg_parse and blobmsg_array_parse with LibFuzzer.
+-
+-CC: Luka Perkov <luka.perkov@sartura.hr>
+-Reviewed-by: Jo-Philipp Wich <jo@mein.io>
+-Signed-off-by: Juraj Vijtiuk <juraj.vijtiuk@sartura.hr>
+-[refactored some checks, added fuzz inputs, adjusted unit test results]
+-Signed-off-by: Petr Štetiar <ynezz@true.cz>
+----
+- blobmsg.c | 40 ++++++++++++++++++++++++++++++++--------
+- 1 file changed, 32 insertions(+), 8 deletions(-)
+-
+---- a/blobmsg.c
+-+++ b/blobmsg.c
+-@@ -36,16 +36,38 @@ bool blobmsg_check_attr(const struct blo
+- 	return blobmsg_check_attr_len(attr, name, blob_raw_len(attr));
+- }
+- 
+-+static const struct blobmsg_hdr* blobmsg_hdr_from_blob(const struct blob_attr *attr, size_t len)
+-+{
+-+	if (len < sizeof(struct blob_attr) + sizeof(struct blobmsg_hdr))
+-+		return NULL;
+-+
+-+	return blob_data(attr);
+-+}
+-+
+-+static bool blobmsg_hdr_valid_namelen(const struct blobmsg_hdr *hdr, size_t len)
+-+{
+-+	if (len < sizeof(struct blob_attr) + sizeof(struct blobmsg_hdr) + blobmsg_namelen(hdr) + 1)
+-+		return false;
+-+
+-+	return true;
+-+}
+-+
+- static bool blobmsg_check_name(const struct blob_attr *attr, size_t len, bool name)
+- {
+- 	char *limit = (char *) attr + len;
+- 	const struct blobmsg_hdr *hdr;
+- 
+--	hdr = blob_data(attr);
+-+	hdr = blobmsg_hdr_from_blob(attr, len);
+-+	if (!hdr)
+-+		return false;
+-+
+- 	if (name && !hdr->namelen)
+- 		return false;
+- 
+--	if ((char *) hdr->name + blobmsg_namelen(hdr) > limit)
+-+	if (name && !blobmsg_hdr_valid_namelen(hdr, len))
+-+		return false;
+-+
+-+	if ((char *) hdr->name + blobmsg_namelen(hdr) + 1 > limit)
+- 		return false;
+- 
+- 	if (blobmsg_namelen(hdr) > (blob_len(attr) - sizeof(struct blobmsg_hdr)))
+-@@ -79,9 +101,6 @@ bool blobmsg_check_attr_len(const struct
+- 	size_t data_len;
+- 	int id;
+- 
+--	if (len < sizeof(struct blob_attr))
+--		return false;
+--
+- 	if (!blobmsg_check_name(attr, len, name))
+- 		return false;
+- 
+-@@ -176,11 +195,10 @@ int blobmsg_parse_array(const struct blo
+- 	return 0;
+- }
+- 
+--
+- int blobmsg_parse(const struct blobmsg_policy *policy, int policy_len,
+-                   struct blob_attr **tb, void *data, unsigned int len)
+- {
+--	struct blobmsg_hdr *hdr;
+-+	const struct blobmsg_hdr *hdr;
+- 	struct blob_attr *attr;
+- 	uint8_t *pslen;
+- 	int i;
+-@@ -197,7 +215,13 @@ int blobmsg_parse(const struct blobmsg_p
+- 	}
+- 
+- 	__blob_for_each_attr(attr, data, len) {
+--		hdr = blob_data(attr);
+-+		hdr = blobmsg_hdr_from_blob(attr, len);
+-+		if (!hdr)
+-+			return -1;
+-+
+-+		if (!blobmsg_hdr_valid_namelen(hdr, len))
+-+			return -1;
+-+
+- 		for (i = 0; i < policy_len; i++) {
+- 			if (!policy[i].name)
+- 				continue;
+-- 
+2.25.0
+
