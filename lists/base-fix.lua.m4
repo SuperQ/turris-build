@@ -7,7 +7,7 @@ if not version_match or not installed or
 end
 
 -- Migrate from Samba3 to Samba4
-if not installed or (installed["samba36-server"] and not installed["samba4-server"]) then
+if installed and installed["samba36-server"] and not installed["samba4-server"] then
 	-- This effectively detects that users has Samba3 installed and is installing Samba4
 	-- In such case we want to also install fix package to migrate samba config.
 	local extra = {}
@@ -19,7 +19,7 @@ if not installed or (installed["samba36-server"] and not installed["samba4-serve
 	--[[
 	We do here hack. If updater is not supporting request conditions then we just
 	install Samba4 server possibly just to migrate to it and remove it later. If
-	it is requested then it stayes installed. Later updater is going to detect
+	it is requested then it stays installed. Later updater is going to detect
 	migration correctly and run this fix.
 	]]
 end
