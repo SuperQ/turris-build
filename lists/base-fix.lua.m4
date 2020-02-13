@@ -15,6 +15,7 @@ if not installed or (installed["samba36-server"] and not installed["samba4-serve
 		extra.condition = "samba4-server"
 	end
 	Install("fix-samba-migrate-to-samba4", extra)
+	Package("fix-samba-migrate-to-samba4", { replan = "finished" })
 	--[[
 	We do here hack. If updater is not supporting request conditions then we just
 	install Samba4 server possibly just to migrate to it and remove it later. If
