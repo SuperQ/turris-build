@@ -1,4 +1,4 @@
-From 770fb715558bcae87f1f3e63c6f6ca3ef8802293 Mon Sep 17 00:00:00 2001
+From 25df443a520a28f11ef59209d4381d50c8af721b Mon Sep 17 00:00:00 2001
 From: Michal Hrusecky <Michal@Hrusecky.net>
 Date: Wed, 7 Mar 2018 17:10:32 +0100
 Subject: [PATCH] mvebu: Basic MoX support
@@ -360,7 +360,7 @@ index 0000000..24c0042
 +
 +endif
 diff --git a/target/linux/mvebu/image/cortex-a53.mk b/target/linux/mvebu/image/cortex-a53.mk
-index d7014d6..4c5baf5 100644
+index d7014d6..eaae4d9 100644
 --- a/target/linux/mvebu/image/cortex-a53.mk
 +++ b/target/linux/mvebu/image/cortex-a53.mk
 @@ -27,6 +27,17 @@ define Device/globalscale_espressobin-v7-emmc
@@ -372,7 +372,7 @@ index d7014d6..4c5baf5 100644
 +  KERNEL_NAME := Image dtbs
 +  KERNEL := kernel-bin
 +  DEVICE_TITLE := MOX (CZ.NICs Marvell Armada 3720 Based Board)
-+  DEVICE_PACKAGES := kmod-usb-core kmod-usb2 kmod-usb3 kmod-usb-storage
++  DEVICE_PACKAGES := kmod-usb2
 +  DEVICE_DTS := armada-3720-turris-mox
 +  DTS_DIR := $(DTS_DIR)/marvell
 +  SUPPORTED_DEVICES := cznic,mox
@@ -16593,5 +16593,5 @@ similarity index 100%
 rename from target/linux/mvebu/patches-4.14/512-clk-mvebu-armada-37xx-periph-Remove-unused-var-num_p.patch
 rename to target/linux/mvebu/patches-4.14/99512-clk-mvebu-armada-37xx-periph-Remove-unused-var-num_p.patch
 -- 
-2.24.1
+2.25.0
 
