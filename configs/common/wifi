@@ -1,5 +1,0 @@
-# Force Atheros drivers to respect user's regdomain settings
-CONFIG_ATH_USER_REGD=y
-
-# Enable DFS support for Atheros common driver
-CONFIG_PACKAGE_ATH_DFS=y
