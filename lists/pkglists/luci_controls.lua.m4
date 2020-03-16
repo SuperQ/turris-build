@@ -1,39 +1,38 @@
 include(utils.m4)dnl
-include(luci-utils.m4)dnl
 _FEATURE_GUARD_
 
 if board == "omnia" or board == "turris1x" then
-	luci_app('rainbow')
+	Install('luci-app-rainbow', { priority = 40 })
 end
 
 -- Additional protocols
-luci_app("ahcp", "bcp38")
-luci_proto("relay")
+forInstall(luci-app,ahcp,bcp38)
+Install("luci-proto-relay", { priority = 40 })
 
 
 if options and options.adblock then
-	luci_app("adblock")
+	Install("luci-app-adblock", { priority = 40 })
 end
 
 if options and options.sqm then
-	luci_app("sqm")
+	Install("luci-app-sqm", { priority = 40 })
 end
 
 if options and options.tinyproxy then
-	luci_app("tinyproxy")
+	Install("luci-app-tinyproxy", { priority = 40 })
 end
 
 if options and options.upnp then
-	luci_app("upnp")
+	Install("luci-app-upnp", { priority = 40 })
 end
 
 if options and options.printserver then
 	Install("kmod-usb-printer", { priority = 40 })
-	luci_app("p910nd")
+	Install("luci-app-p910nd", { priority = 40 })
 end
 
 if options and options.statistics then
-	luci_app("statistics")
+	Install("luci-app-statistics", { priority = 40 })
 end
 
 _END_FEATURE_GUARD_
