@@ -27,7 +27,7 @@ news_text() {
 
 news_notification() {
 	local text
-	text="$(news_text | sed -e 's/"/\\"/g' -e 's/^[[:blank:]]*\*[[:blank:]]*/ • /')"
+	text="$(news_text | sed -e 's|"|\\"|g')"
 	[ -z "$text" ] && return
 	echo "create_notification -s news \"$text\""
 }
