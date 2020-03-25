@@ -27,7 +27,8 @@ news_text() {
 
 news_notification() {
 	local text
-	text="$(news_text | sed -e 's|"|\\"|g')"
+        # escape problematic
+	text="$(news_text | sed 's|\\|\\\\|g; s|$|\\$|g; s|"|\\"|g')"
 	[ -z "$text" ] && return
 	echo "create_notification -s news \"$text\""
 }
