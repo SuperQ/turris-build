@@ -1,7 +1,7 @@
-From 4191adbf3751ee6212ab0d9faa25e4eea4a76285 Mon Sep 17 00:00:00 2001
+From b0d588962653fc99d1de995f27d718c4c612bceb Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Karel=20Ko=C4=8D=C3=AD?= <karel.koci@nic.cz>
 Date: Mon, 17 Feb 2020 11:56:15 +0100
-Subject: [PATCH] Add Turris 1.X support (kernel 4.14)
+Subject: [PATCH] Add Turris 1.X support (kernel 5.4)
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -10,16 +10,16 @@ Signed-off-by: Marek Behún <marek.behun@nic.cz>
 Signed-off-by: Karel Kočí <karel.koci@nic.cz>
 ---
  .../mpc85xx/base-files/etc/board.d/02_network |   4 +
- target/linux/mpc85xx/config-4.14              |  60 +++-
+ target/linux/mpc85xx/config-5.4               |  56 +++-
  .../files/arch/powerpc/boot/dts/turris1x.dts  | 296 ++++++++++++++++++
- target/linux/mpc85xx/image/Makefile           |   8 +
+ target/linux/mpc85xx/image/Makefile           |  10 +
  target/linux/mpc85xx/p2020/config-default     |  27 ++
  ...fsl_elbc_nand_add_ecc_mode_selection.patch | 227 ++++++++++++++
  ...a8k-extend-slave-bus-implementations.patch | 243 ++++++++++++++
- 7 files changed, 858 insertions(+), 7 deletions(-)
+ 7 files changed, 859 insertions(+), 4 deletions(-)
  create mode 100644 target/linux/mpc85xx/files/arch/powerpc/boot/dts/turris1x.dts
- create mode 100644 target/linux/mpc85xx/patches-4.14/230-fsl_elbc_nand_add_ecc_mode_selection.patch
- create mode 100644 target/linux/mpc85xx/patches-4.14/400-net-dsa-qca8k-extend-slave-bus-implementations.patch
+ create mode 100644 target/linux/mpc85xx/patches-5.4/230-fsl_elbc_nand_add_ecc_mode_selection.patch
+ create mode 100644 target/linux/mpc85xx/patches-5.4/400-net-dsa-qca8k-extend-slave-bus-implementations.patch
 
 diff --git a/target/linux/mpc85xx/base-files/etc/board.d/02_network b/target/linux/mpc85xx/base-files/etc/board.d/02_network
 index aa33a4a..b24bcb6 100755
@@ -36,14 +36,14 @@ index aa33a4a..b24bcb6 100755
  *)
  	ucidef_set_interfaces_lan_wan "eth0" "eth1"
  	;;
-diff --git a/target/linux/mpc85xx/config-4.14 b/target/linux/mpc85xx/config-4.14
-index 77fd10f..da038dc 100644
---- a/target/linux/mpc85xx/config-4.14
-+++ b/target/linux/mpc85xx/config-4.14
-@@ -42,6 +42,15 @@ CONFIG_BOOKE_WDT=y
- CONFIG_BOUNCE=y
+diff --git a/target/linux/mpc85xx/config-5.4 b/target/linux/mpc85xx/config-5.4
+index 65ee414..10cfce1 100644
+--- a/target/linux/mpc85xx/config-5.4
++++ b/target/linux/mpc85xx/config-5.4
+@@ -42,6 +42,15 @@ CONFIG_BOUNCE=y
  # CONFIG_BSC9131_RDB is not set
  # CONFIG_BSC9132_QDS is not set
+ # CONFIG_C293_PCIE is not set
 +CONFIG_BTRFS_FS=y
 +CONFIG_VFAT_FS=y
 +CONFIG_FAT_DEFAULT_CODEPAGE=437
@@ -53,10 +53,10 @@ index 77fd10f..da038dc 100644
 +# CONFIG_BTRFS_FS_CHECK_INTEGRITY is not set
 +CONFIG_BTRFS_FS_POSIX_ACL=y
 +CONFIG_BUILD_BIN2C=y
- # CONFIG_C293_PCIE is not set
  CONFIG_CLONE_BACKWARDS=y
  CONFIG_CLZ_TAB=y
-@@ -60,6 +69,7 @@ CONFIG_CRYPTO_AUTHENC=y
+ CONFIG_CMDLINE="console=ttyS0,115200"
+@@ -59,6 +68,7 @@ CONFIG_CRYPTO_AUTHENC=y
  CONFIG_CRYPTO_HASH=y
  CONFIG_CRYPTO_HASH2=y
  CONFIG_CRYPTO_HW=y
@@ -64,15 +64,7 @@ index 77fd10f..da038dc 100644
  CONFIG_CRYPTO_MANAGER=y
  CONFIG_CRYPTO_MANAGER2=y
  # CONFIG_CRYPTO_MD5_PPC is not set
-@@ -72,6 +82,7 @@ CONFIG_CRYPTO_RSA=y
- # CONFIG_CRYPTO_SHA1_PPC_SPE is not set
- # CONFIG_CRYPTO_SHA256_PPC_SPE is not set
- CONFIG_CRYPTO_WORKQUEUE=y
-+CONFIG_CRYPTO_XZ=y
- CONFIG_DEBUG_BUGVERBOSE=y
- # CONFIG_DEFAULT_UIMAGE is not set
- CONFIG_DNOTIFY=y
-@@ -183,14 +194,24 @@ CONFIG_IRQ_DOMAIN=y
+@@ -170,7 +180,12 @@ CONFIG_IRQ_DOMAIN=y
  CONFIG_IRQ_FORCED_THREADING=y
  CONFIG_IRQ_WORK=y
  CONFIG_ISA_DMA_API=y
@@ -84,11 +76,12 @@ index 77fd10f..da038dc 100644
 +# CONFIG_KERNEL_XZ is not set
  CONFIG_KERNEL_START=0xc0000000
  # CONFIG_KSI8560 is not set
- CONFIG_LIBFDT=y
- CONFIG_LOWMEM_CAM_NUM=3
+ CONFIG_LEGACY_PTYS=y
+@@ -181,6 +196,13 @@ CONFIG_LOWMEM_CAM_NUM=3
  CONFIG_LOWMEM_SIZE=0x30000000
  CONFIG_LXT_PHY=y
--# CONFIG_MATH_EMULATION is not set
+ # CONFIG_MATH_EMULATION is not set
++# CONFIG_MATH_EMULATION is not set
 +CONFIG_LZO_COMPRESS=y
 +CONFIG_LZO_DECOMPRESS=y
 +CONFIG_MATH_EMULATION=y
@@ -97,13 +90,13 @@ index 77fd10f..da038dc 100644
 +CONFIG_MDIO_BOARDINFO=y
  CONFIG_MDIO_BUS=y
  CONFIG_MDIO_DEVICE=y
- CONFIG_MIGRATION=y
-@@ -199,19 +220,30 @@ CONFIG_MODULES_USE_ELF_RELA=y
+ CONFIG_MEMFD_CREATE=y
+@@ -189,18 +211,29 @@ CONFIG_MODULES_USE_ELF_RELA=y
  # CONFIG_MPC8536_DS is not set
  # CONFIG_MPC8540_ADS is not set
  # CONFIG_MPC8560_ADS is not set
 -# CONFIG_MPC85xx_CDS is not set
-+CONFIG_MPC85xx_CDS=y
+++CONFIG_MPC85xx_CDS=y
  # CONFIG_MPC85xx_DS is not set
 -# CONFIG_MPC85xx_MDS is not set
 -# CONFIG_MPC85xx_RDB is not set
@@ -112,14 +105,12 @@ index 77fd10f..da038dc 100644
  CONFIG_MPIC=y
  # CONFIG_MPIC_MSGR is not set
  CONFIG_MPIC_TIMER=y
- # CONFIG_MPIC_U3_HT_IRQS is not set
- # CONFIG_MPIC_WEIRD is not set
  CONFIG_MPILIB=y
--# CONFIG_MTD_CFI is not set
-+# CONFIG_MTD_CFI_NOSWAP is not set
+ # CONFIG_MTD_CFI is not set
 +CONFIG_MTD_CFI_STAA=y
 +CONFIG_MTD_JEDECPROBE=y
  CONFIG_MTD_M25P80=y
+ CONFIG_MTD_RAW_NAND=y
  CONFIG_MTD_SPI_NOR=y
 +CONFIG_MTD_RAM=y
 +CONFIG_MTD_ROM=y
@@ -131,17 +122,14 @@ index 77fd10f..da038dc 100644
 +CONFIG_MTD_UBI_WL_THRESHOLD=4096
 +CONFIG_MUTEX_SPIN_ON_OWNER=y
  # CONFIG_MVME2500 is not set
- # CONFIG_NEED_DMA_MAP_STATE is not set
- # CONFIG_NEED_PER_CPU_EMBED_FIRST_CHUNK is not set
-@@ -229,13 +261,14 @@ CONFIG_OF_FLATTREE=y
- CONFIG_OF_GPIO=y
+ CONFIG_NEED_PER_CPU_KM=y
+ CONFIG_NEED_SG_DMA_LENGTH=y
+@@ -216,10 +249,11 @@ CONFIG_OF_GPIO=y
  CONFIG_OF_IRQ=y
+ CONFIG_OF_KOBJ=y
  CONFIG_OF_MDIO=y
 +CONFIG_OF_MTD=y
  CONFIG_OF_NET=y
- CONFIG_OF_PCI=y
- CONFIG_OF_PCI_IRQ=y
- CONFIG_OF_RESERVED_MEM=y
  CONFIG_OLD_SIGACTION=y
  CONFIG_OLD_SIGSUSPEND=y
 -# CONFIG_P1010_RDB is not set
@@ -149,7 +137,7 @@ index 77fd10f..da038dc 100644
  # CONFIG_P1022_DS is not set
  # CONFIG_P1022_RDK is not set
  # CONFIG_P1023_RDB is not set
-@@ -257,6 +290,8 @@ CONFIG_PHYSICAL_ALIGN=0x04000000
+@@ -241,6 +275,8 @@ CONFIG_PHYSICAL_ALIGN=0x04000000
  CONFIG_PHYSICAL_START=0x00000000
  # CONFIG_PHYS_64BIT is not set
  # CONFIG_PPA8548 is not set
@@ -158,29 +146,25 @@ index 77fd10f..da038dc 100644
  CONFIG_PPC=y
  CONFIG_PPC32=y
  # CONFIG_PPC64 is not set
-@@ -279,11 +314,12 @@ CONFIG_PPC_DOORBELL=y
+@@ -259,7 +295,9 @@ CONFIG_PPC_DOORBELL=y
+ # CONFIG_PPC_E500MC is not set
  # CONFIG_PPC_EARLY_DEBUG is not set
- # CONFIG_PPC_EPAPR_HV_PIC is not set
  CONFIG_PPC_FSL_BOOK3E=y
--# CONFIG_PPC_I8259 is not set
 +CONFIG_PPC_I8259=y
- # CONFIG_PPC_ICP_HV is not set
- # CONFIG_PPC_ICP_NATIVE is not set
- # CONFIG_PPC_ICS_RTAS is not set
  CONFIG_PPC_INDIRECT_PCI=y
 +CONFIG_PPC_LIB_RHEAP=y
+ # CONFIG_PPC_IRQ_SOFT_MASK_DEBUG is not set
  CONFIG_PPC_MMU_NOHASH=y
- # CONFIG_PPC_MM_SLICES is not set
- # CONFIG_PPC_MPC106 is not set
-@@ -329,6 +365,7 @@ CONFIG_SPE=y
+ CONFIG_PPC_PCI_CHOICE=y
+@@ -295,6 +333,7 @@ CONFIG_SPE=y
  CONFIG_SPE_POSSIBLE=y
  CONFIG_SPI=y
  CONFIG_SPI_FSL_ESPI=y
 +CONFIG_SPI_FSL_LIB=y
  CONFIG_SPI_MASTER=y
+ CONFIG_SPI_MEM=y
  CONFIG_SRCU=y
- # CONFIG_STRIP_ASM_SYMS is not set
-@@ -352,6 +389,13 @@ CONFIG_UCC=y
+@@ -318,6 +357,13 @@ CONFIG_UCC=y
  CONFIG_UCC_FAST=y
  CONFIG_UCC_GETH=y
  # CONFIG_UGETH_TX_ON_DEMAND is not set
@@ -194,7 +178,7 @@ index 77fd10f..da038dc 100644
  CONFIG_USB_SUPPORT=y
  CONFIG_VDSO32=y
  # CONFIG_VIRT_CPU_ACCOUNTING_NATIVE is not set
-@@ -362,3 +406,5 @@ CONFIG_WATCHDOG_CORE=y
+@@ -328,3 +374,5 @@ CONFIG_WATCHDOG_CORE=y
  # CONFIG_XPS_USB_HCD_XILINX is not set
  CONFIG_XZ_DEC_BCJ=y
  CONFIG_XZ_DEC_POWERPC=y
@@ -503,26 +487,28 @@ index 0000000..b5128a3
 +
 +/include/ "fsl/p2020si-post.dtsi"
 diff --git a/target/linux/mpc85xx/image/Makefile b/target/linux/mpc85xx/image/Makefile
-index c0e3112..14a005f 100644
+index 40002c1..cbf58d4 100644
 --- a/target/linux/mpc85xx/image/Makefile
 +++ b/target/linux/mpc85xx/image/Makefile
-@@ -141,6 +141,14 @@ define Device/p2020rdb
+@@ -123,6 +123,16 @@ define Device/freescale_p2020rdb
  endef
- TARGET_DEVICES += p2020rdb
+ TARGET_DEVICES += freescale_p2020rdb
  
 +define Device/turris1x
-+  DEVICE_TITLE := Turris 1.x
++  DEVICE_VENDOR := Turris
++  DEVICE_MODEL := 1.x
 +  DEVICE_PACKAGES :=  \
 +    kmod-hwmon-core kmod-hwmon-lm90 kmod-usb3
 +  KERNEL = kernel-bin
 +endef
 +TARGET_DEVICES += turris1x
 +
++
  endif
  
  $(eval $(call BuildImage))
 diff --git a/target/linux/mpc85xx/p2020/config-default b/target/linux/mpc85xx/p2020/config-default
-index e652644..7913e00 100644
+index be75f36..80726ad 100644
 --- a/target/linux/mpc85xx/p2020/config-default
 +++ b/target/linux/mpc85xx/p2020/config-default
 @@ -4,6 +4,10 @@ CONFIG_GENERIC_CLOCKEVENTS_BROADCAST=y
@@ -536,7 +522,7 @@ index e652644..7913e00 100644
  CONFIG_LOCK_SPIN_ON_OWNER=y
  CONFIG_MPC85xx_RDB=y
  CONFIG_MTD_CFI=y
-@@ -14,7 +18,23 @@ CONFIG_MTD_NAND_ECC_BCH=y
+@@ -12,7 +16,23 @@ CONFIG_MTD_NAND_ECC_BCH=y
  CONFIG_MTD_NAND_FSL_ELBC=y
  CONFIG_MTD_SPLIT_FIRMWARE=y
  CONFIG_MTD_SPLIT_FIT_FW=y
@@ -560,7 +546,7 @@ index e652644..7913e00 100644
  CONFIG_NET_FLOW_LIMIT=y
  CONFIG_NR_CPUS=2
  CONFIG_PADATA=y
-@@ -26,6 +46,13 @@ CONFIG_RFS_ACCEL=y
+@@ -24,6 +44,13 @@ CONFIG_RFS_ACCEL=y
  CONFIG_RPS=y
  CONFIG_RWSEM_SPIN_ON_OWNER=y
  CONFIG_SMP=y
@@ -574,11 +560,11 @@ index e652644..7913e00 100644
  CONFIG_XPS=y
 +CONFIG_RTC_NVMEM=y
 +CONFIG_NVMEM_SYSFS=y
-diff --git a/target/linux/mpc85xx/patches-4.14/230-fsl_elbc_nand_add_ecc_mode_selection.patch b/target/linux/mpc85xx/patches-4.14/230-fsl_elbc_nand_add_ecc_mode_selection.patch
+diff --git a/target/linux/mpc85xx/patches-5.4/230-fsl_elbc_nand_add_ecc_mode_selection.patch b/target/linux/mpc85xx/patches-5.4/230-fsl_elbc_nand_add_ecc_mode_selection.patch
 new file mode 100644
 index 0000000..d661626
 --- /dev/null
-+++ b/target/linux/mpc85xx/patches-4.14/230-fsl_elbc_nand_add_ecc_mode_selection.patch
++++ b/target/linux/mpc85xx/patches-5.4/230-fsl_elbc_nand_add_ecc_mode_selection.patch
 @@ -0,0 +1,227 @@
 +Index: a/drivers/mtd/nand/fsl_elbc_nand.c
 +===================================================================
@@ -807,11 +793,11 @@ index 0000000..d661626
 + 	/* First look for RedBoot table or partitions on the command
 + 	 * line, these take precedence over device tree information */
 + 	mtd_device_parse_register(mtd, part_probe_types, NULL,
-diff --git a/target/linux/mpc85xx/patches-4.14/400-net-dsa-qca8k-extend-slave-bus-implementations.patch b/target/linux/mpc85xx/patches-4.14/400-net-dsa-qca8k-extend-slave-bus-implementations.patch
+diff --git a/target/linux/mpc85xx/patches-5.4/400-net-dsa-qca8k-extend-slave-bus-implementations.patch b/target/linux/mpc85xx/patches-5.4/400-net-dsa-qca8k-extend-slave-bus-implementations.patch
 new file mode 100644
 index 0000000..9a24bee
 --- /dev/null
-+++ b/target/linux/mpc85xx/patches-4.14/400-net-dsa-qca8k-extend-slave-bus-implementations.patch
++++ b/target/linux/mpc85xx/patches-5.4/400-net-dsa-qca8k-extend-slave-bus-implementations.patch
 @@ -0,0 +1,243 @@
 +From c13c700885cf9cdfe52a67124168671cbb843f2c Mon Sep 17 00:00:00 2001
 +From: =?UTF-8?q?Marek=20Beh=C3=BAn?= <marek.behun@nic.cz>
@@ -1057,5 +1043,5 @@ index 0000000..9a24bee
 +2.21.0
 +
 -- 
-2.25.1
+2.26.0
 
